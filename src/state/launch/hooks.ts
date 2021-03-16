@@ -5,7 +5,7 @@ import useSWR from 'swr'
 
 import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { AppState } from '..'
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import SET_ABI from '../../constants/set-abi.json'
 import ISSUANCE_ABI from '../../constants/basic-issuance-abi.json'
@@ -22,7 +22,6 @@ interface FeeState {
   streamingFeePercentage: BigNumber         // Percent of Set accruing to manager annually (1% = 1e16, 100% = 1e18)
   lastStreamingFeeTimestamp: BigNumber     // Timestamp last streaming fee was accrued
 }
-
 
 export function useLaunchState(): AppState['launch'] {
   return useSelector<AppState, AppState['launch']>(state => state.launch)
@@ -41,12 +40,45 @@ export const useGasPrice = () => {
   }
 }
 
+export const useTokenPrices = (tokens: TokenValue[]) => {
+  const tickers = tokens.map(t => t.value?.symbol).join(',')
+  const tickersArr = tickers.split(',')
+  const prices: number[] = new Array(tickersArr.length).fill(1)
+  const [status, setStatus] = useState('idle');
+  const [data, setData] = useState({data: {items: []}});
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setStatus('fetching');
+      const response = await fetch(`https://api.covalenthq.com/v1/pricing/tickers/?tickers=${tickers}&key=ckey_60ca15e8ef88446587ddc869b97"`);
+      const data = await response.json();
+      setData(data);
+      setStatus('fetched');
+    };
+
+    fetchData();
+  }, [tickers]);
+
+  tokens.forEach((token, idx) => {
+    const ticker = token?.value?.address
+    data.data.items.forEach((d: any) => {
+      if (ticker === d.contract_address) {
+        prices[idx] = d.quote_rate
+      }
+    }
+    )
+  })
+
+  return { status, prices };
+}
+
 export default function useLaunchIndexFund() {
   const [contract, setContract] = useState<string | undefined>()
   const [isActiveTrade, setActiveTrade] = useState<boolean>(false)
   const [isActiveIssuance, setActiveIssuance] = useState<boolean>(false)
   const [isActiveFee, setActiveFee] = useState<boolean>(false)
   const launchState = useLaunchState()
+  const { prices } = useTokenPrices(launchState.tokens)
   const { library, active, account } = useWeb3React()
   const {
     REACT_APP_SET_ADDRESS,
@@ -130,7 +162,6 @@ export default function useLaunchIndexFund() {
     const newUnits: BigNumber[] = [];
     const tokens = launchState.tokens
     const decimals = tokens.map(token => token.value?.decimals)
-    const prices = await getTokenPrices(tokens.map(t => t.value?.symbol).join(','), tokens)
     const setPrices = tokens.map(t => unitsBN(Number(launchState?.price), t.value?.decimals))
 
     const tokenPrices = prices.map((p: number, idx: number) => unitsBN(p, decimals[idx]))
@@ -161,27 +192,6 @@ export default function useLaunchIndexFund() {
       return response.toNumber()
     }
     return 0
-  }
-
-  const getTokenPrices = async (tickers: string, tokens: TokenValue[]) => {
-    const response = await fetch(
-      `https://api.covalenthq.com/v1/pricing/tickers/?tickers=${tickers}&key=ckey_60ca15e8ef88446587ddc869b97"`
-    )
-    const data = await response.json()
-    const tickersArr = tickers.split(',')
-    const prices: number[] = new Array(tickersArr.length).fill(1)
-
-    tokens.forEach((token, idx) => {
-      const ticker = token?.value?.address
-      data.data.items.forEach((d: any) => {
-          if (ticker === d.contract_address) {
-            prices[idx] = d.quote_rate
-          }
-        }
-      )
-    })
-
-    return prices
   }
 
   return {
