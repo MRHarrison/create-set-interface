@@ -1,14 +1,14 @@
-import { FormEvent } from "react"
-import { useState } from "react"
-import { ChevronDown, X } from "react-feather"
-import { useDispatch } from "react-redux"
-import styled from "styled-components"
+import { FormEvent } from 'react'
+import { useState } from 'react'
+import { ChevronDown, X } from 'react-feather'
+import { useDispatch } from 'react-redux'
+import styled from 'styled-components'
 
-import tokenList from '../../constants/token-list.json'
-import { addToken, removeToken, replaceToken } from "../../state/launch/actions"
-import { useLaunchState } from "../../state/launch/hooks"
-import { Token } from "../../state/launch/reducer"
-import { IconButton, LogoImg } from "../../theme"
+import tokenList from '../../constants/token-list-kovan.json'
+import { addToken, removeToken, replaceToken } from '../../state/launch/actions'
+import { useLaunchState } from '../../state/launch/hooks'
+import { Token } from '../../state/launch/reducer'
+import { IconButton, LogoImg } from '../../theme'
 
 const TokenManager = styled.div`
   display: flex;
@@ -87,7 +87,6 @@ export function TokenSelect({ add, remove, idx, address, onChange, fields }: Pro
   const openList = () => {
     setOpened(false)
   }
-
   const tokenSelect = (event: FormEvent<HTMLDivElement>) => {
     const div = event.target as HTMLDivElement
     const selAddress = div.dataset.address

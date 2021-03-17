@@ -3,7 +3,7 @@ import { BigNumber, Contract } from 'ethers'
 import { useSelector } from 'react-redux'
 import useSWR from 'swr'
 
-import { TransactionResponse } from "@ethersproject/abstract-provider";
+import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { AppState } from '..'
 import { useEffect, useState } from 'react';
 
@@ -50,23 +50,31 @@ export const useTokenPrices = (tokens: TokenValue[]) => {
   useEffect(() => {
     const fetchData = async () => {
       setStatus('fetching');
-      const response = await fetch(`https://api.covalenthq.com/v1/pricing/tickers/?tickers=${tickers}&key=ckey_60ca15e8ef88446587ddc869b97"`);
-      const data = await response.json();
-      setData(data);
-      setStatus('fetched');
+      if (process.env.REACT_APP_NETWORK === 'KOVAN') {
+        const kovanPrices = await import('../../constants/prices-kovan.json');
+        // @ts-ignore
+        setData({ data: kovanPrices })
+      } else {
+        const response = await fetch(`https://api.covalenthq.com/v1/pricing/tickers/?tickers=${tickers}&key=ckey_60ca15e8ef88446587ddc869b97'`);
+        const data = await response.json();
+        setData(data);
+        setStatus('fetched');
+      }
     };
 
     fetchData();
   }, [tickers]);
 
   tokens.forEach((token, idx) => {
-    const ticker = token?.value?.address
+    const address = token?.value?.address
     data.data.items.forEach((d: any) => {
-      if (ticker === d.contract_address) {
+      if (address === d.contract_address) {
         prices[idx] = d.quote_rate
+      } else if (process.env.REACT_APP_NETWORK === 'KOVAN' &&
+        token.value.symbol === d.symbol) {
+        prices[idx] = d.prices
       }
-    }
-    )
+    })
   })
 
   return { status, prices };
